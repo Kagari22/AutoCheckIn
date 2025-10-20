@@ -3,6 +3,7 @@
 Autojs6 下载链接：https://github.com/SuperMonster003/AutoJs6/releases
 
 注意事项：如果无法进行自动签到，可能是对应权限未开启。
+
 建议设置相关权限：
 
 1.后台弹出界面
