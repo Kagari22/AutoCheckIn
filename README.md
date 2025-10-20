@@ -1,4 +1,5 @@
-数组FAFU自动签到脚本，在 Autojs6 中添加定时任务即可做到自动签到(需保持手机亮屏)。
+数组FAFU自动签到脚本，在 <span style="font-size:24px;"><b>Autojs6</b></span>
+中添加定时任务即可做到自动签到(需保持手机亮屏)。
 
 Autojs6 下载链接：https://github.com/SuperMonster003/AutoJs6/releases
 
