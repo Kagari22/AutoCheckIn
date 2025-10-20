@@ -13,3 +13,5 @@ Autojs6 下载链接：https://github.com/SuperMonster003/AutoJs6/releases
 3.访问日历
 
 4.允许通知
+
+5.无障碍服务
