@@ -1,6 +1,8 @@
 数字FAFU自动签到脚本，在 <span style="font-size:24px;"><b>Autojs6</b></span>
 中添加定时任务即可做到自动签到(需保持手机亮屏)。
 
+为了保险起见，建议设置两个定时任务，以防意外。
+
 Autojs6 下载链接：https://github.com/SuperMonster003/AutoJs6/releases
 
 注意事项：如果无法进行自动签到，可能是对应权限未开启。
@@ -16,3 +18,5 @@ Autojs6 下载链接：https://github.com/SuperMonster003/AutoJs6/releases
 4.允许通知
 
 5.无障碍服务
+
+2025/10/22 更新了源代码，修复了等待时间过短导致的签到失败问题。
