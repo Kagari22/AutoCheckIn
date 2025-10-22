@@ -184,7 +184,3 @@ function main(){
 }
 
 main();
-
-
-// 执行主流程
-main();
