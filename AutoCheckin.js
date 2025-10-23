@@ -1,186 +1,99 @@
 // Auto.js 自动签到脚本：数字FAFU
 // 需要开启无障碍服务和悬浮窗权限
-// Version 1.0 
-// 修复了等待时间过短导致无法签到问题
 
-// 全局超时与延迟设置（可根据设备/网络情况调整）
-const DEFAULT_TIMEOUT = 10000;    // 默认等待某个文本出现的最大时间（毫秒）
-const DEFAULT_POLL = 800;         // 每次轮询间隔（毫秒）
-const AFTER_CLICK_SLEEP = 1800;   // 点击后等待 UI 响应的时间（毫秒）
-
-// 简单封装 sleep，便于统一管理与替换
-function sleepMs(ms){ sleep(ms); }
-
-// 等待界面上出现指定文本（支持 text 和 textContains）
-// textStr: 要等待的文本；timeout: 最大等待时间；poll: 轮询间隔
-// 返回 true 表示找到了，false 表示超时未找到
-function waitForText(textStr, timeout = DEFAULT_TIMEOUT, poll = DEFAULT_POLL){
+function waitForText(textStr, timeout = 15000){
     let elapsed = 0;
-    while (elapsed < timeout){
-        if (textContains(textStr).exists() || text(textStr).exists()) return true;
-        sleepMs(poll);
-        elapsed += poll;
+    while(!textContains(textStr).exists() && elapsed < timeout){
+        sleep(3000);
+        elapsed += 1000;
     }
-    return false;
+    return textContains(textStr).exists();
 }
 
-// 等待当前前台包名为指定包（可选用来确保已切到目标应用）
-// pkg: 包名字符串，例如 "cn.edu.fafu.iportal"
-function waitForPackage(pkg, timeout = 15000, poll = 500){
+// 点击签到按钮，通过控件坐标点击
+function clickSignButton(){
+    toast("等待签到按钮...");
     let elapsed = 0;
-    while (elapsed < timeout){
-        if (currentPackage() === pkg) return true;
-        sleepMs(poll);
-        elapsed += poll;
-    }
-    return false;
-}
-
-// 安全点击函数：优先尝试 node.click()（更稳），失败则用节点坐标 click()
-// node: AccessibilityNodeInfo 对象或类似对象
-// 返回 true 表示点击已发出（并等待了 AFTER_CLICK_SLEEP），false 表示无法点击
-function safeClick(node){
-    if (!node) return false;
-    try {
-        if (node.click && node.click()) {
-            sleepMs(AFTER_CLICK_SLEEP);
+    while(elapsed < 15000){
+        let signBtn = text("签到").findOnce();
+        if(signBtn){
+            let rect = signBtn.bounds();
+            click(rect.centerX(), rect.centerY());
+            sleep(3000);
+            toast("签到按钮点击成功");
             return true;
         }
-    } catch(e){ }
-    try {
-        let r = node.bounds();
-        if (r) {
-            click(r.centerX(), r.centerY());
-            sleepMs(AFTER_CLICK_SLEEP + 300);
+        sleep(3000);
+        elapsed += 1000;
+    }
+    toast("签到按钮未找到");
+    return false;
+}
+
+// 点击“已请假”下方按钮（坐标点击）
+function clickLeaveButton(){
+    if(waitForText("已请假", 10000)){
+        let leaveText = text("已请假").findOnce();
+        if(leaveText){
+            let rect = leaveText.bounds();
+            // 点击文字下方50px处，通常是按钮
+            click(rect.centerX(), rect.bottom + 50);
+            sleep(3000);
+            toast("点击已请假下方按钮成功");
             return true;
+        } else {
+            toast("未找到已请假文字");
+            return false;
         }
-    } catch(e){ }
-    return false;
-}
-
-// 等待指定文本出现并点击（包含日志与超时处理）
-// textStr: 要点击的文本；timeout: 等待该文本的最长时间
-// 返回 true 表示点击成功，false 表示失败或超时
-function waitForTextAndClick(textStr, timeout = DEFAULT_TIMEOUT){
-    toast("等待: " + textStr);                           // 屏幕提示
-    log("等待: " + textStr + " (timeout=" + timeout + "ms)");
-    if (!waitForText(textStr, timeout)) {
-        toast("超时未出现: " + textStr);
-        log("超时未出现: " + textStr);
-        sleepMs(1000);                                  // 给用户看提示并避免太快返回
-        toast("请检查是否已签到！");
-        log("请检查是否已签到！");
-        return false;
-    }
-
-    // 优先通过精确 text() 找节点，找不到再用 textContains()
-    let node = text(textStr).findOnce();
-    if (!node) node = textContains(textStr).findOnce();
-
-    if (!node) {
-        toast("找到文本但未取得节点对象: " + textStr);
-        log("找到文本但未取得节点对象: " + textStr);
-        return false;
-    }
-
-    // 用 safeClick 来点击
-    let clicked = safeClick(node);
-    if (!clicked) {
-        toast("点击失败: " + textStr);
-        log("点击失败: " + textStr);
-        return false;
-    }
-
-    sleepMs(1200); // 额外短等待，确保 UI 更新
-    return true;
-}
-
-// 寻找并点击第一个出现的“签到”按钮（带轮询重试）
-// timeout: 找到按钮的最长时间
-function clickFirstSign(timeout = DEFAULT_TIMEOUT){
-    toast("寻找第一个 签到 按钮...");
-    let elapsed = 0, poll = DEFAULT_POLL;
-    while (elapsed < timeout){
-        let node = text("签到").findOnce() || textContains("签到").findOnce();
-        if (node){
-            if (safeClick(node)) {
-                toast("点击 签到 成功");
-                return true;
-            }
-        }
-        sleepMs(poll);
-        elapsed += poll;
-    }
-    toast("未找到 签到 按钮（超时）");
-    return false;
-}
-
-// 点击指定文字下方的按钮（通过坐标偏移）
-// textStr: 参考文字，yOffset: 在文字下方偏移多少像素去点击（可调）
-function clickUnderText(textStr, yOffset = 60, timeout = DEFAULT_TIMEOUT){
-    toast("等待并点击 " + textStr + " 下方按钮");
-    if (!waitForText(textStr, timeout)) return false;
-    let node = text(textStr).findOnce() || textContains(textStr).findOnce();
-    if (!node) return false;
-    try {
-        let b = node.bounds();
-        click(b.centerX(), b.bottom + yOffset);   // 在文字下方点击
-        sleepMs(AFTER_CLICK_SLEEP + 300);
-        return true;
-    } catch(e){
+    } else {
+        toast("未找到已请假文字");
         return false;
     }
 }
 
-// 提交签到并尝试点击确认弹窗（若存在）
-function submitAndConfirm(){
-    if (!waitForTextAndClick("提交签到", DEFAULT_TIMEOUT)) {
-        return false
-    }
-    if (waitForText("确认", 8000)) {
-        waitForTextAndClick("确认", 8000);
-    }
-    return true;
-}
-
-// 主流程：按步骤打开 APP -> 学生管理 -> 点击第一个签到 -> 选择未签到/已请假 -> 提交
 function main(){
     toast("开始自动签到");
-    log("开始自动签到");
 
-    launchApp("数字FAFU");   // 根据你设备上安装的应用名称启动（或改为 launchPackage("包名")）
-    sleepMs(6000);           // 启动后等待应用 UI 完全加载
+    // 1. 打开数字FAFU
+    launchApp("数字FAFU");
+    sleep(5000);
 
-    if (!waitForTextAndClick("学生管理", 30000)) {
-        toast("步骤失败：学生管理");
-        return;
-    }
-
-    if (!clickFirstSign(30000)) {
-        toast("步骤失败：点击签到");
-        return;
-    }
-
-    // 优先点击“签到状态：未签到”，否则尝试点击“已请假”下方或“未签到”
-    if (waitForText("签到状态：未签到", 8000)) {
-        waitForTextAndClick("签到状态：未签到", 8000);
-        sleepMs(1200);
+    // 2. 点击“学生管理”
+    if(waitForText("学生管理", 10000)){
+        textContains("学生管理").click();
+        sleep(3000);
     } else {
-        if (!clickUnderText("已请假", 60, 10000)) {
-            if (!waitForTextAndClick("未签到", 8000)) {
-                toast("未找到 未签到 或 已请假 下方按钮");
-                return;
-            }
-        }
-    }
-
-    if (!submitAndConfirm()) {
-        toast("提交/确认步骤失败");
+        toast("未找到学生管理按钮");
         return;
     }
 
-    toast("签到流程尝试完成");
-    log("签到流程尝试完成");
+    // 3. 点击“签到”
+    if(!clickSignButton()){
+        return;
+    }
+
+    // 4. 点击“已请假”下方按钮
+    if(!clickLeaveButton()){
+        return;
+    }
+
+    // 5. 点击“提交签到”
+    if(waitForText("提交签到", 10000)){
+        textContains("提交签到").click();
+        sleep(3000);
+    } else {
+        toast("未找到提交签到按钮");
+        return;
+    }
+
+    // 6. 点击“确认”
+    if(waitForText("确认", 10000)){
+        textContains("确认").click();
+        toast("签到完成");
+    } else {
+        toast("未找到确认按钮");
+    }
 }
 
+// 执行主流程
 main();
